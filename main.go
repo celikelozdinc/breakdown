@@ -9,7 +9,7 @@ import (
 	statistics "github.com/gonum/stat"
 	plot "gonum.org/v1/plot"
 	plotter "gonum.org/v1/plot/plotter"
-	plotutil "gonum.org/v1/plot/plotutil"
+	color "image/color"
 	vg "gonum.org/v1/plot/vg"
 )
 
@@ -26,9 +26,9 @@ type RestoreDurationBreakdown struct {
 }
 
 var (
-	input_csv  = "input/12Replicas.csv"
-	output_png = "output/12_breakdown.png"
-	xlabel     = "#replicas=12"
+	input_csv  = "input/6Replicas.csv"
+	output_png = "output/6_breakdown.png"
+	xlabel     = "#replicas=6"
 )
 
 func main() {
@@ -50,7 +50,7 @@ func main() {
 
 	// Started,start_communication,prepareCkpts,applyCktps,Applied
 	// also, calculates statistics
-	parseRestoreDurations := func(restoreDurations [][]string, distributed *RestoreDurationBreakdown, centralized *RestoreDurationBreakdown, conventional *RestoreDurationBreakdown) {
+	parseRestoreDurations := func(restoreDurations [][]string, distributed *RestoreDurationBreakdown, centralized *RestoreDurationBreakdown, conventional *RestoreDurationBreakdown, mirrored *RestoreDurationBreakdown) {
 
 		for row := range restoreDurations {
 			if row == 0 {
@@ -111,54 +111,74 @@ func main() {
 				conventional.Mean_ApplyCkpts = statistics.Mean(conventional.ApplyCkpts, nil)
 			}
 
+			// Mirrored --> has 1 extra step : prepare ckpts
+			if row >= 31 && row <= 40 {
+				startJVM, _ := strconv.ParseFloat(restoreDurations[row][0], 64)
+				mirrored.StartJvm = append(mirrored.StartJvm, startJVM)
+				mirrored.Mean_StartJvm = statistics.Mean(mirrored.StartJvm, nil)
+
+				start, _ := strconv.ParseFloat(restoreDurations[row][1], 64)
+				mirrored.StartCommunication = append(mirrored.StartCommunication, start)
+				mirrored.Mean_StartCommunication = statistics.Mean(mirrored.StartCommunication, nil)
+
+	
+				prepare, _ := strconv.ParseFloat(restoreDurations[row][2], 64)
+				mirrored.PrepareCkpts = append(mirrored.PrepareCkpts, prepare)
+				mirrored.Mean_PrepareCkpts = statistics.Mean(mirrored.PrepareCkpts, nil)
+
+				apply, _ := strconv.ParseFloat(restoreDurations[row][3], 64)
+				mirrored.ApplyCkpts = append(mirrored.ApplyCkpts, apply)
+				mirrored.Mean_ApplyCkpts = statistics.Mean(mirrored.ApplyCkpts, nil)
+			}
+
 		}
 	}
 
 	// plot bar graph
-	makePlot := func(distributed *RestoreDurationBreakdown, centralized *RestoreDurationBreakdown, conventional *RestoreDurationBreakdown) {
+	makePlot := func(distributed *RestoreDurationBreakdown, centralized *RestoreDurationBreakdown, conventional *RestoreDurationBreakdown,mirrored *RestoreDurationBreakdown) {
 
 		/* StartJvm */
 		width := 0.3 * vg.Centimeter
 		var group_StartJvm plotter.Values
-		group_StartJvm = append(group_StartJvm, distributed.Mean_StartJvm, centralized.Mean_StartJvm, conventional.Mean_StartJvm)
+		group_StartJvm = append(group_StartJvm, distributed.Mean_StartJvm, centralized.Mean_StartJvm, conventional.Mean_StartJvm,mirrored.Mean_StartJvm)
 		bars_StartJvm, err := plotter.NewBarChart(group_StartJvm, width)
 		if err != nil {
 			panic(err)
 		}
 		bars_StartJvm.LineStyle.Width = vg.Length(0)
-		bars_StartJvm.Color = plotutil.Color(0)
+		bars_StartJvm.Color = color.Gray{32}
 		bars_StartJvm.Offset = -width
 
 		/* StartCommunication */
 		var group_StartCommunication plotter.Values
-		group_StartCommunication = append(group_StartCommunication, distributed.Mean_StartCommunication, centralized.Mean_StartCommunication, conventional.Mean_StartCommunication)
+		group_StartCommunication = append(group_StartCommunication, distributed.Mean_StartCommunication, centralized.Mean_StartCommunication, conventional.Mean_StartCommunication,mirrored.Mean_StartCommunication)
 		bars_StartCommunication, err := plotter.NewBarChart(group_StartCommunication, width)
 		if err != nil {
 			panic(err)
 		}
 		bars_StartCommunication.LineStyle.Width = vg.Length(0)
-		bars_StartCommunication.Color = plotutil.Color(1)
+		bars_StartCommunication.Color = color.Gray{192}
 
 		/* PrepareCkpts */
 		var group_prepareCkpts plotter.Values
-		group_prepareCkpts = append(group_prepareCkpts, distributed.Mean_PrepareCkpts, centralized.Mean_PrepareCkpts, conventional.Mean_PrepareCkpts)
+		group_prepareCkpts = append(group_prepareCkpts, distributed.Mean_PrepareCkpts, centralized.Mean_PrepareCkpts, conventional.Mean_PrepareCkpts, mirrored.Mean_PrepareCkpts)
 		bars_prepareCkpts, err := plotter.NewBarChart(group_prepareCkpts, width)
 		if err != nil {
 			panic(err)
 		}
 		bars_prepareCkpts.LineStyle.Width = vg.Length(0)
-		bars_prepareCkpts.Color = plotutil.Color(2)
+		bars_prepareCkpts.Color = color.Gray{64}
 		bars_prepareCkpts.Offset = width
 
 		/* ApplyCkpts */
 		var group_applyCkpts plotter.Values
-		group_applyCkpts = append(group_applyCkpts, distributed.Mean_ApplyCkpts, centralized.Mean_ApplyCkpts, conventional.Mean_ApplyCkpts)
+		group_applyCkpts = append(group_applyCkpts, distributed.Mean_ApplyCkpts, centralized.Mean_ApplyCkpts, conventional.Mean_ApplyCkpts, mirrored.Mean_ApplyCkpts)
 		bars_applyCkpts, err := plotter.NewBarChart(group_applyCkpts, width)
 		if err != nil {
 			panic(err)
 		}
 		bars_applyCkpts.LineStyle.Width = vg.Length(0)
-		bars_applyCkpts.Color = plotutil.Color(3)
+		bars_applyCkpts.Color = color.Gray{128}
 		bars_applyCkpts.Offset = 2 * width
 
 		// Vertical BarChart
@@ -171,25 +191,26 @@ func main() {
 		plot.Title.Text = " "
 		plot.X.Label.Text = xlabel
 		plot.Y.Label.Text = "Breakdown for restore duration(sec)"
-		labels := []string{"Distributed", "Centralized", "Conventional"}
+		labels := []string{"Distributed", "Centralized", "Conventional","Mirrored"}
 
 		plot.Add(bars_StartJvm, bars_StartCommunication, bars_prepareCkpts, bars_applyCkpts)
-		plot.Legend.Add("Start JVM", bars_StartJvm)
-		plot.Legend.Add("Start Communication", bars_StartCommunication)
-		plot.Legend.Add("Prepare Checkpoints", bars_prepareCkpts)
+		plot.Legend.Add("JVM Initialization", bars_StartJvm)
+		plot.Legend.Add("Gather Checkpoints", bars_StartCommunication)
+		plot.Legend.Add("Serialize Checkpoints", bars_prepareCkpts)
 		plot.Legend.Add("Apply Checkpoints", bars_applyCkpts)
 		plot.Legend.Top = true
+		//plot.Legend.Left = true
 		plot.NominalX(labels...)
 
-		err = plot.Save(3*vg.Inch, 5*vg.Inch, output_png)
+		err = plot.Save(7*vg.Inch, 7*vg.Inch, output_png)
 		if err != nil {
 			log.Panic(err)
 		}
 
 	}
 
-	distributedBreakdown, centralizedBreakdown, conventionalBreakdown := RestoreDurationBreakdown{}, RestoreDurationBreakdown{}, RestoreDurationBreakdown{}
+	distributedBreakdown, centralizedBreakdown, conventionalBreakdown, mirroredBreakdown := RestoreDurationBreakdown{}, RestoreDurationBreakdown{}, RestoreDurationBreakdown{}, RestoreDurationBreakdown{}
 	restoreDurations := readRestoreDurations()
-	parseRestoreDurations(restoreDurations, &distributedBreakdown, &centralizedBreakdown, &conventionalBreakdown)
-	makePlot(&distributedBreakdown, &centralizedBreakdown, &conventionalBreakdown)
+	parseRestoreDurations(restoreDurations, &distributedBreakdown, &centralizedBreakdown, &conventionalBreakdown, &mirroredBreakdown)
+	makePlot(&distributedBreakdown, &centralizedBreakdown, &conventionalBreakdown,&mirroredBreakdown)
 }
