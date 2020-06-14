@@ -63,7 +63,7 @@ func main() {
 				startJVM, _ := strconv.ParseFloat(restoreDurations[row][0], 64)
 				distributed.StartJvm = append(distributed.StartJvm, startJVM)
 				distributed.Mean_StartJvm = statistics.Mean(distributed.StartJvm, nil)
-
+				
 				startComm, _ := strconv.ParseFloat(restoreDurations[row][1], 64)
 				distributed.StartCommunication = append(distributed.StartCommunication, startComm)
 				distributed.Mean_StartCommunication = statistics.Mean(distributed.StartCommunication, nil)
@@ -132,6 +132,38 @@ func main() {
 			}
 
 		}
+		log.Println("----------------------------------------------")
+		log.Printf("Distributed.StartJvm -> %.2f",distributed.Mean_StartJvm)
+		log.Printf("Distributed.StartCommunication -> %.2f",distributed.Mean_StartCommunication)
+		log.Printf("Distributed.PrepareCkpts -> %.2f",distributed.Mean_PrepareCkpts)
+		log.Printf("Distributed.ApplyCkpts -> %.2f",distributed.Mean_ApplyCkpts)
+		log.Println("----------------------------------------------")
+
+
+		log.Println("----------------------------------------------")
+		log.Printf("Centralized.StartJvm -> %.2f",centralized.Mean_StartJvm)
+		log.Printf("Centralized.StartCommunication -> %.2f",centralized.Mean_StartCommunication)
+		log.Printf("Centralized.PrepareCkpts -> %.2f",centralized.Mean_PrepareCkpts)
+		log.Printf("Centralized.ApplyCkpts -> %.2f",centralized.Mean_ApplyCkpts)
+		log.Println("----------------------------------------------")
+
+
+		log.Println("----------------------------------------------")
+		log.Printf("Conventional.StartJvm -> %.2f",conventional.Mean_StartJvm)
+		log.Printf("Conventional.StartCommunication -> %.2f",conventional.Mean_StartCommunication)
+		log.Printf("Conventional.PrepareCkpts -> %.2f",conventional.Mean_PrepareCkpts)
+		log.Printf("Conventional.ApplyCkpts -> %.2f",conventional.Mean_ApplyCkpts)
+		log.Println("----------------------------------------------")
+
+
+
+		log.Println("----------------------------------------------")
+		log.Printf("Mirrored.StartJvm -> %.2f",mirrored.Mean_StartJvm)
+		log.Printf("Mirrored.StartCommunication -> %.2f",mirrored.Mean_StartCommunication)
+		log.Printf("Mirrored.PrepareCkpts -> %.2f",mirrored.Mean_PrepareCkpts)
+		log.Printf("Mirrored.ApplyCkpts -> %.2f",mirrored.Mean_ApplyCkpts)
+		log.Println("----------------------------------------------")
+
 	}
 
 	// plot bar graph
